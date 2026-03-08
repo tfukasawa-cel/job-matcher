@@ -50,6 +50,40 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================
+# パスワード認証
+# ============================
+def check_password():
+    """パスワード認証。正しければTrueを返す。"""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if st.session_state.authenticated:
+        return True
+
+    # Secrets または環境変数からパスワードを取得
+    correct_password = None
+    try:
+        correct_password = st.secrets.get("APP_PASSWORD", None)
+    except Exception:
+        pass
+    if not correct_password:
+        correct_password = os.environ.get("APP_PASSWORD", "kinpica2024")
+
+    st.markdown("## 🔒 求人マッチングツール")
+    st.markdown("このアプリはパスワードで保護されています。")
+    password = st.text_input("パスワード", type="password", key="login_password")
+    if st.button("ログイン", type="primary"):
+        if password == correct_password:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("パスワードが正しくありません。")
+    return False
+
+if not check_password():
+    st.stop()
+
+# ============================
 # セッション状態の初期化
 # ============================
 if "api_key" not in st.session_state:

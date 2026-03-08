@@ -86,8 +86,16 @@ if not check_password():
 # ============================
 # セッション状態の初期化
 # ============================
+# APIキー: Secrets → 環境変数 → 手動入力の優先順で取得
 if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
+    _api_key = ""
+    try:
+        _api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+    except Exception:
+        pass
+    if not _api_key:
+        _api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    st.session_state.api_key = _api_key
 if "current_jobs" not in st.session_state:
     st.session_state.current_jobs = []
 if "scored_jobs" not in st.session_state:
@@ -136,27 +144,40 @@ with st.sidebar:
 if page == "⚙️ 設定":
     st.title("⚙️ 設定")
 
-    st.markdown("""
-    ### Claude APIキーの設定
-    PDF精密採点やAIスキルマッチに使用します。
+    st.markdown("### Claude APIキーの設定")
+    st.markdown("PDF精密採点やAIスキルマッチに使用します。")
 
-    **APIキーの取得方法:**
-    1. [Anthropic Console](https://console.anthropic.com/) にアクセス
-    2. アカウント作成（初回のみ）
-    3. 「API Keys」→「Create Key」でキーを作成
-    4. 下のフィールドにコピー&ペースト
-    """)
+    # Secretsで事前設定されているか判定
+    _secrets_key = ""
+    try:
+        _secrets_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+    except Exception:
+        pass
 
-    api_key = st.text_input(
-        "APIキー",
-        value=st.session_state.api_key,
-        type="password",
-        placeholder="sk-ant-api03-...",
-    )
-    if api_key != st.session_state.api_key:
-        st.session_state.api_key = api_key
-        if api_key:
-            st.success("APIキーを設定しました")
+    if _secrets_key:
+        # 管理者がSecretsで設定済み → チームメンバーは入力不要
+        st.success("✅ APIキーは管理者により設定済みです。そのままお使いいただけます。")
+        st.info(f"🔑 キー: `{_secrets_key[:12]}...`（セキュリティのため一部表示）")
+    else:
+        # Secretsに未設定 → 手動入力モード
+        st.markdown("""
+        **APIキーの取得方法:**
+        1. [Anthropic Console](https://console.anthropic.com/) にアクセス
+        2. アカウント作成（初回のみ）
+        3. 「API Keys」→「Create Key」でキーを作成
+        4. 下のフィールドにコピー&ペースト
+        """)
+
+        api_key = st.text_input(
+            "APIキー",
+            value=st.session_state.api_key,
+            type="password",
+            placeholder="sk-ant-api03-...",
+        )
+        if api_key != st.session_state.api_key:
+            st.session_state.api_key = api_key
+            if api_key:
+                st.success("APIキーを設定しました")
 
     st.markdown("---")
     st.markdown("### 💰 コスト見積もり")

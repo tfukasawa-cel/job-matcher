@@ -416,6 +416,13 @@ elif page == "📋 求人取込 & マッチ":
 
     # ここから先はjobsがある場合のみ表示
     if jobs:
+        # AI判定後のrerunでは、セッション状態の判定済み結果を優先使用
+        stored_jobs = st.session_state.current_jobs
+        if (stored_jobs
+                and len(stored_jobs) == len(jobs)
+                and any(j.get("match_grade") for j in stored_jobs)):
+            jobs = stored_jobs
+
         # 既存マッチ度チェック
         has_existing_grades = any(j.get("match_grade") for j in jobs)
 
@@ -506,16 +513,21 @@ elif page == "📋 求人取込 & マッチ":
                 progress = st.progress(0)
                 status = st.empty()
 
-                with st.spinner("AIが判定中..."):
-                    status.text(f"全{len(jobs)}件を判定中...")
-                    matched_jobs = skill_match_batch(
-                        api_key=st.session_state.api_key,
-                        candidate_profile=candidate["profile"],
-                        jobs=jobs,
-                        source=source_key,
-                    )
-                    progress.progress(100)
-                    status.text("判定完了！")
+                def update_progress(completed, total):
+                    pct = min(int(completed / total * 100), 99)
+                    progress.progress(pct)
+                    status.text(f"AIが判定中... {completed}/{total}件完了")
+
+                status.text(f"全{len(jobs)}件を判定中... （10件ずつバッチ処理）")
+                matched_jobs = skill_match_batch(
+                    api_key=st.session_state.api_key,
+                    candidate_profile=candidate["profile"],
+                    jobs=jobs,
+                    source=source_key,
+                    progress_callback=update_progress,
+                )
+                progress.progress(100)
+                status.text("判定完了！")
 
                 st.session_state.current_jobs = matched_jobs
                 st.success("✅ AI判定完了！ページを再読み込みして結果を確認してください。")
@@ -554,8 +566,9 @@ elif page == "📋 求人取込 & マッチ":
                 mime="text/csv",
             )
 
-        # セッションに保存
-        st.session_state.current_jobs = jobs
+        # セッションに保存（AI判定済みデータを上書きしない）
+        if not any(j.get("match_grade") for j in jobs):
+            st.session_state.current_jobs = jobs
 
 
 # ============================

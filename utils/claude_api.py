@@ -15,10 +15,11 @@ def get_client(api_key: str) -> anthropic.Anthropic:
 
 
 def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
-                      source: str = "circus") -> list[dict]:
+                      source: str = "circus", progress_callback=None) -> list[dict]:
     """
     求人リストに対してスキルマッチ判定を一括実行
     jobs: [{"company": "...", "title": "...", "skills": "...", ...}, ...]
+    progress_callback: function(completed, total) for progress updates
     Returns: jobs with match_grade and match_reason added
     """
     client = get_client(api_key)
@@ -26,6 +27,7 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
     # バッチで処理（10件ずつ）
     batch_size = 10
     results = []
+    total = len(jobs)
 
     for i in range(0, len(jobs), batch_size):
         batch = jobs[i:i + batch_size]
@@ -95,6 +97,9 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
                 job["match_reason"] = f"APIエラー: {str(e)[:50]}"
 
         results.extend(batch)
+
+        if progress_callback:
+            progress_callback(len(results), total)
 
     return results
 

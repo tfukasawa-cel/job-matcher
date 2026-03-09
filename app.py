@@ -508,23 +508,8 @@ elif page == "📋 求人取込 & マッチ":
         if not st.session_state.api_key:
             st.warning("⚠️ AI判定にはAPIキーが必要です。「設定」ページで設定してください。")
         else:
-            # 処理件数の上限設定
-            MAX_FREE_JOBS = 200  # 無料枠の目安
             total_jobs = len(jobs)
-
-            if total_jobs > MAX_FREE_JOBS:
-                st.warning(f"⚠️ 求人数が {total_jobs}件 あります。全件処理すると時間とコストがかかります。")
-                match_count = st.slider(
-                    "判定する件数を選択",
-                    min_value=50,
-                    max_value=min(total_jobs, 500),
-                    value=min(200, total_jobs),
-                    step=50,
-                    help="件数が多いほどコストと時間がかかります。まず200件で試すのがおすすめです。",
-                )
-                st.caption(f"※ 先頭 {match_count}件 を判定します（ページ順）")
-            else:
-                match_count = total_jobs
+            match_count = total_jobs
 
             cost = estimate_cost(num_jobs_csv=match_count)
             st.caption(f"💰 推定コスト: ${cost['total_cost_usd']:.3f}（約¥{cost['total_cost_jpy']:.0f}）")

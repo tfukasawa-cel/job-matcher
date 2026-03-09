@@ -506,10 +506,29 @@ elif page == "📋 求人取込 & マッチ":
         if not st.session_state.api_key:
             st.warning("⚠️ AI判定にはAPIキーが必要です。「設定」ページで設定してください。")
         else:
-            cost = estimate_cost(num_jobs_csv=len(jobs))
+            # 処理件数の上限設定
+            MAX_FREE_JOBS = 200  # 無料枠の目安
+            total_jobs = len(jobs)
+
+            if total_jobs > MAX_FREE_JOBS:
+                st.warning(f"⚠️ 求人数が {total_jobs}件 あります。全件処理すると時間とコストがかかります。")
+                match_count = st.slider(
+                    "判定する件数を選択",
+                    min_value=50,
+                    max_value=min(total_jobs, 500),
+                    value=min(200, total_jobs),
+                    step=50,
+                    help="件数が多いほどコストと時間がかかります。まず200件で試すのがおすすめです。",
+                )
+                st.caption(f"※ 先頭 {match_count}件 を判定します（ページ順）")
+            else:
+                match_count = total_jobs
+
+            cost = estimate_cost(num_jobs_csv=match_count)
             st.caption(f"💰 推定コスト: ${cost['total_cost_usd']:.3f}（約¥{cost['total_cost_jpy']:.0f}）")
 
             if st.button("🚀 AIスキルマッチ判定を実行", type="primary"):
+                jobs_to_match = jobs[:match_count]
                 progress = st.progress(0)
                 status = st.empty()
 
@@ -518,19 +537,23 @@ elif page == "📋 求人取込 & マッチ":
                     progress.progress(pct)
                     status.text(f"AIが判定中... {completed}/{total}件完了")
 
-                status.text(f"全{len(jobs)}件を判定中... （10件ずつバッチ処理）")
+                status.text(f"{match_count}件を判定中... （10件ずつバッチ処理）")
                 matched_jobs = skill_match_batch(
                     api_key=st.session_state.api_key,
                     candidate_profile=candidate["profile"],
-                    jobs=jobs,
+                    jobs=jobs_to_match,
                     source=source_key,
                     progress_callback=update_progress,
                 )
                 progress.progress(100)
                 status.text("判定完了！")
 
+                # 判定した分 + 残り（未判定）を結合
+                if match_count < total_jobs:
+                    matched_jobs = matched_jobs + jobs[match_count:]
+
                 st.session_state.current_jobs = matched_jobs
-                st.success("✅ AI判定完了！ページを再読み込みして結果を確認してください。")
+                st.success(f"✅ {match_count}件のAI判定完了！")
                 st.rerun()
 
         # データ保存

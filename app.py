@@ -14,7 +14,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(__file__))
 
 from utils.candidates import load_candidates, add_candidate, delete_candidate
-from utils.csv_parser import parse_circus_csv, parse_hitolink_csv, auto_detect_source
+from utils.csv_parser import parse_circus_csv, parse_hitolink_csv, parse_bookmarklet_json, auto_detect_source
 from utils.claude_api import skill_match_batch, score_pdfs_batch, estimate_cost
 from utils.xlsx_generator import (
     generate_recommendation_xlsx,
@@ -114,7 +114,7 @@ with st.sidebar:
 
     page = st.radio(
         "メニュー",
-        ["⚙️ 設定", "👤 候補者管理", "📋 CSV取込 & マッチ",
+        ["🔧 セットアップ", "⚙️ 設定", "👤 候補者管理", "📋 求人取込 & マッチ",
          "📄 PDF精密採点", "📊 推薦リスト出力"],
         label_visibility="collapsed",
     )
@@ -139,9 +139,68 @@ with st.sidebar:
 
 
 # ============================
+# 🔧 セットアップページ
+# ============================
+if page == "🔧 セットアップ":
+    st.title("🔧 セットアップ")
+    st.markdown("### ブックマークレットの設置")
+    st.markdown("""
+    ブックマークレットは、ブラウザのブックマークバーに追加する**小さなボタン**です。
+    circus や HITO-Link の検索結果ページでこのボタンを押すと、
+    求人データが自動的に抽出されてクリップボードにコピーされます。
+    """)
+
+    st.markdown("---")
+
+    st.markdown("### 設置手順")
+    st.markdown("""
+    **ステップ1:** ブラウザのブックマークバーを表示する
+    - Chrome: `Ctrl + Shift + B`（Mac: `Cmd + Shift + B`）
+
+    **ステップ2:** 以下のリンクをブックマークバーに**ドラッグ&ドロップ**する
+    """)
+
+    # ブックマークレットコード（ミニファイ版）
+    circus_bookmarklet = """javascript:void(function(){if(!location.hostname.includes('circus-job.com')){alert('circus-job.com の検索結果ページで実行してください');return}var ov=document.createElement('div');ov.id='__bkm_overlay';ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-size:20px;font-family:sans-serif';ov.innerHTML='<div id=__bkm_status style=text-align:center;line-height:1.8>&#x1F50D; 抽出中...</div>';document.body.appendChild(ov);var statusEl=document.getElementById('__bkm_status');var prefMap={1:'北海道',2:'青森県',3:'岩手県',4:'宮城県',5:'秋田県',6:'山形県',7:'福島県',8:'茨城県',9:'栃木県',10:'群馬県',11:'埼玉県',12:'千葉県',13:'東京都',14:'神奈川県',15:'新潟県',16:'富山県',17:'石川県',18:'福井県',19:'山梨県',20:'長野県',21:'岐阜県',22:'静岡県',23:'愛知県',24:'三重県',25:'滋賀県',26:'京都府',27:'大阪府',28:'兵庫県',29:'奈良県',30:'和歌山県',31:'鳥取県',32:'島根県',33:'岡山県',34:'広島県',35:'山口県',36:'徳島県',37:'香川県',38:'愛媛県',39:'高知県',40:'福岡県',41:'佐賀県',42:'長崎県',43:'熊本県',44:'大分県',45:'宮崎県',46:'鹿児島県',47:'沖縄県'};var btns=document.querySelectorAll('button');var pages=[];for(var i=0;i<btns.length;i++){if(/^\\d+$/.test(btns[i].textContent.trim()))pages.push(Number(btns[i].textContent.trim()))}var maxPage=pages.length>0?Math.max.apply(null,pages):1;function extractPage(pn){var card=document.querySelector('[class*=JobSearchResultCard-root]');if(!card)return[];var fk=Object.keys(card).find(function(k){return k.startsWith('__reactFiber')});if(!fk)return[];var f=card[fk];for(var d=0;d<4;d++)f=f.return;var c=f,items=[],r=1;while(c){var j=c.memoizedProps&&c.memoizedProps.job;if(j){var s=j.expectedAnnualSalary||{};items.push({page:pn,rank:r++,company:(j.company&&j.company.name)||'',title:j.name||'',job_type:j.reproduction===true?'シェアリング':(j.jobPostOwnerCompany?'circus求人':'企業求人'),salary:s.min&&s.max?s.min+'万〜'+s.max+'万':(s.min?s.min+'万〜':''),location:(j.addresses||[]).map(function(a){return prefMap[a.prefecture]||''}).join(', '),skills:(j.minimumQualification||'').replace(/\\n/g,' ').slice(0,300),published_at:(j.publishStartedAt||j.openedAt||'').slice(0,10),agent_company:(j.jobPostOwnerCompany&&j.jobPostOwnerCompany.name)||''})}c=c.sibling}return items}function goTo(n){var bs=document.querySelectorAll('button');for(var i=0;i<bs.length;i++){if(bs[i].textContent.trim()===String(n)){bs[i].click();return true}}return false}var allJobs=[],cp=1;function proc(){var items=extractPage(cp);allJobs=allJobs.concat(items);statusEl.innerHTML='&#x1F4C4; '+cp+'/'+maxPage+' ('+allJobs.length+'件)';if(cp<maxPage){cp++;goTo(cp);setTimeout(proc,2500)}else{var r=JSON.stringify({source:'circus',extracted_at:new Date().toISOString(),total:allJobs.length,jobs:allJobs});navigator.clipboard.writeText(r).then(function(){statusEl.innerHTML='<div style=font-size:48px>&#x2705;</div><div style=font-size:24px;margin-top:12px><b>'+allJobs.length+'件</b>コピー完了！</div><div style=font-size:14px;margin-top:8px;color:#aaa>アプリでCtrl+V</div><div style=margin-top:20px><button onclick=document.getElementById(\\'__bkm_overlay\\').remove() style=padding:12px+32px;font-size:16px;border:none;border-radius:8px;background:#4CAF50;color:#fff;cursor:pointer>閉じる</button></div>'}).catch(function(){statusEl.innerHTML='<div>&#x26A0; コピー失敗。テキストを手動コピーしてください</div><textarea id=__bkm_ta style=width:80%;height:200px readonly>'+r.replace(/</g,'&lt;')+'</textarea><button onclick=document.getElementById(\\'__bkm_ta\\').select();document.execCommand(\\'copy\\') style=padding:8px+24px;border:none;border-radius:6px;background:#2196F3;color:#fff;cursor:pointer;margin-top:8px>コピー</button> <button onclick=document.getElementById(\\'__bkm_overlay\\').remove() style=padding:8px+24px;border:none;border-radius:6px;background:#666;color:#fff;cursor:pointer>閉じる</button>'})}}proc()}())"""
+
+    hitolink_bookmarklet = """javascript:void(function(){if(!location.hostname.includes('hito-link.jp')){alert('HITO-Link のページで実行してください');return}var ov=document.createElement('div');ov.id='__bkm_overlay';ov.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-size:20px;font-family:sans-serif';ov.innerHTML='<div id=__bkm_status style=text-align:center;line-height:1.8>&#x1F50D; 抽出中...</div>';document.body.appendChild(ov);var statusEl=document.getElementById('__bkm_status');function getMaxPage(){var links=document.querySelectorAll('a,button,[role=button]');var mx=1;for(var i=0;i<links.length;i++){var t=links[i].textContent.trim();if(/^\\d+$/.test(t)){var n=parseInt(t);if(n>mx)mx=n}}var m=document.body.innerText.match(/(\\d+)\\s*件/);if(m){var ep=Math.ceil(parseInt(m[1])/100);if(ep>mx)mx=ep}return mx}function parseJobs(text,pn){var jobs=[];var lines=text.split('\\n').map(function(l){return l.trim()}).filter(function(l){return l.length>0});var salP=/(\\d{3,4})\\s*[万~～〜]\\s*(\\d{3,4})\\s*万|年収\\s*[:：]?\\s*(\\d{3,4})\\s*[万~～〜]/;var locP=/(北海道|青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|東京|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|京都|大阪|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)/;var blocks=[],cb=[];for(var i=0;i<lines.length;i++){var l=lines[i];if((l.match(/^(案件|求人|No\\.?\\s*\\d|^\\d+\\s*[\\.．])/)||(l.match(/^(株式会社|合同会社|有限会社)/)&&cb.length>3))&&cb.length>0){blocks.push(cb.join('\\n'));cb=[l]}else{cb.push(l)}}if(cb.length>0)blocks.push(cb.join('\\n'));for(var b=0;b<blocks.length;b++){var bl=blocks[b].split('\\n');var co='',ti='',sa='',lo='',sk='';for(var j=0;j<bl.length;j++){if(!co&&bl[j].match(/(株式会社|合同会社|有限会社|\\.inc|\\.co)/i))co=bl[j].replace(/^\\d+[\\. ]*/, '').trim();if(!sa){var sm=bl[j].match(salP);if(sm)sa=bl[j].trim()}if(!lo){var lm=bl[j].match(locP);if(lm)lo=lm[0]}if(bl[j].match(/(必須|応募資格|スキル|経験|要件)/))sk+=bl[j].trim()+' '}for(var j=0;j<bl.length;j++){if(bl[j]!==co&&bl[j].length>5&&bl[j].length<100&&!bl[j].match(salP)&&!bl[j].match(/^\\d+[\\. ]*$/)){if(bl[j].match(/(セールス|営業|マネージャー|エンジニア|コンサル|マーケ|企画|カスタマー|開発|事業)/)||(!ti&&co)){ti=bl[j].replace(/^\\d+[\\. ]*/, '').trim();break}}}if(co||ti)jobs.push({page:pn,company:co,title:ti,salary:sa,location:lo,skills:sk.trim().slice(0,300)})}return jobs}function goNext(n){var ls=document.querySelectorAll('a,button,[role=button]');for(var i=0;i<ls.length;i++){if(ls[i].textContent.trim()===String(n)){ls[i].click();return true}}for(var i=0;i<ls.length;i++){var t=ls[i].textContent.trim();if(t==='次へ'||t==='>'||t.match(/next/i)){ls[i].click();return true}}return false}var mx=getMaxPage(),all=[],cp=1;function proc(){var items=parseJobs(document.body.innerText,cp);all=all.concat(items);statusEl.innerHTML='&#x1F4C4; '+cp+'/'+mx+' ('+all.length+'件)';if(cp<mx){cp++;goNext(cp);setTimeout(proc,2500)}else{var r=JSON.stringify({source:'hito-link',extracted_at:new Date().toISOString(),total:all.length,jobs:all});navigator.clipboard.writeText(r).then(function(){statusEl.innerHTML='<div style=font-size:48px>&#x2705;</div><div style=font-size:24px;margin-top:12px><b>'+all.length+'件</b>コピー完了！</div><div style=font-size:14px;margin-top:8px;color:#aaa>アプリでCtrl+V</div><div style=margin-top:20px><button onclick=document.getElementById(\\'__bkm_overlay\\').remove() style=padding:12px+32px;font-size:16px;border:none;border-radius:8px;background:#4CAF50;color:#fff;cursor:pointer>閉じる</button></div>'}).catch(function(){statusEl.innerHTML='<div>&#x26A0; コピー失敗</div><textarea id=__bkm_ta style=width:80%;height:200px readonly>'+r.replace(/</g,'&lt;')+'</textarea><button onclick=document.getElementById(\\'__bkm_ta\\').select();document.execCommand(\\'copy\\') style=padding:8px+24px;border:none;border-radius:6px;background:#2196F3;color:#fff;cursor:pointer;margin-top:8px>コピー</button> <button onclick=document.getElementById(\\'__bkm_overlay\\').remove() style=padding:8px+24px;border:none;border-radius:6px;background:#666;color:#fff;cursor:pointer>閉じる</button>'})}}proc()}())"""
+
+    st.markdown(f"""
+    <div style="background:#f0f2f6;padding:20px;border-radius:10px;margin:10px 0">
+        <p style="margin-bottom:12px"><strong>以下のリンクをブックマークバーにドラッグしてください：</strong></p>
+        <p style="margin:8px 0">
+            <a href="{circus_bookmarklet}" style="display:inline-block;padding:10px 20px;background:#FF6B35;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">🎪 circus求人抽出</a>
+            &nbsp;&nbsp;
+            <a href="{hitolink_bookmarklet}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px">🔗 HITO-Link求人抽出</a>
+        </p>
+        <p style="color:#666;font-size:13px;margin-top:8px">※リンクをクリックしても動作しません。必ずブックマークバーにドラッグしてください。</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    **ステップ3:** 使い方
+    1. circus または HITO-Link で求人を検索する
+    2. 検索結果ページでブックマークバーの「circus求人抽出」or「HITO-Link求人抽出」をクリック
+    3. 自動で全ページの求人データが抽出され、クリップボードにコピーされる
+    4. このアプリの「求人取込 & マッチ」ページで **Ctrl+V** で貼り付け
+    """)
+
+    st.markdown("---")
+    st.markdown("### よくある質問")
+    with st.expander("ブックマークレットとは？"):
+        st.markdown("ブラウザのブックマーク（お気に入り）に保存する小さなプログラムです。通常のブックマークがURLを開くのに対し、ブックマークレットは今見ているページ上でプログラムを実行します。")
+    with st.expander("候補者ごとに設定し直す必要がある？"):
+        st.markdown("いいえ。ブックマークレットは一度設置すれば、どの候補者の検索でも同じものを使えます。検索条件はcircus/HITO-Linkの検索画面で変更してください。")
+    with st.expander("求人が更新されたらどうなる？"):
+        st.markdown("ブックマークレットはクリックした瞬間のデータを読み取ります。最新の求人を取得したい場合は、再度検索してブックマークレットを実行してください。")
+    with st.expander("利用規約に問題はない？"):
+        st.markdown("ブックマークレットはブラウザに表示済みの情報を読み取るだけで、新しいリクエストは送信しません。ユーザーが画面で見ている情報と同じものを取得するため、利用規約に抵触しません。")
+
+
+# ============================
 # ⚙️ 設定ページ
 # ============================
-if page == "⚙️ 設定":
+elif page == "⚙️ 設定":
     st.title("⚙️ 設定")
 
     st.markdown("### Claude APIキーの設定")
@@ -263,10 +322,10 @@ elif page == "👤 候補者管理":
 
 
 # ============================
-# 📋 CSV取込 & スキルマッチ
+# 📋 求人取込 & スキルマッチ
 # ============================
-elif page == "📋 CSV取込 & マッチ":
-    st.title("📋 CSV取込 & スキルマッチ判定")
+elif page == "📋 求人取込 & マッチ":
+    st.title("📋 求人取込 & スキルマッチ判定")
 
     # 候補者選択確認
     if not st.session_state.selected_candidate:
@@ -286,43 +345,77 @@ elif page == "📋 CSV取込 & マッチ":
 
     st.info(f"👤 対象候補者: **{candidate['name']}**")
 
-    # ソース選択
-    source = st.radio(
-        "求人サイト",
-        ["circus", "HITO-Link"],
+    # 入力モード選択
+    input_mode = st.radio(
+        "データ取込方法",
+        ["📋 ブックマークレットから貼り付け（推奨）", "📁 CSVファイルをアップロード"],
         horizontal=True,
     )
-    source_key = "circus" if source == "circus" else "hito-link"
-    st.session_state.current_source = source_key
 
     st.markdown("---")
 
-    # CSVアップロード
-    st.markdown("### 📁 CSVファイルをアップロード")
-    st.caption("Phase1で出力されたCSVファイル、または検索結果CSVをアップロードしてください。")
+    jobs = None
 
-    uploaded_csv = st.file_uploader(
-        "CSVファイルを選択",
-        type=["csv"],
-        key="csv_upload",
-    )
+    if input_mode == "📋 ブックマークレットから貼り付け（推奨）":
+        st.markdown("### 📋 データ貼り付け")
+        st.caption("ブックマークレットで抽出したデータを Ctrl+V で貼り付けてください。")
 
-    if uploaded_csv:
-        file_content = uploaded_csv.read()
+        pasted_json = st.text_area(
+            "ここに Ctrl+V で貼り付け",
+            height=150,
+            placeholder='{"source":"circus","extracted_at":"...","jobs":[...]}',
+            key="paste_input",
+        )
 
-        # 解析
-        with st.spinner("CSVを読み込み中..."):
-            if source_key == "circus":
-                jobs = parse_circus_csv(file_content)
-            else:
-                jobs = parse_hitolink_csv(file_content)
+        if pasted_json and pasted_json.strip():
+            with st.spinner("データを読み込み中..."):
+                jobs, detected_source = parse_bookmarklet_json(pasted_json.strip())
 
-        if not jobs:
-            st.error("求人データを読み取れませんでした。ファイル形式を確認してください。")
-            st.stop()
+            if not jobs:
+                st.error("データを読み取れませんでした。ブックマークレットで抽出したJSON形式のデータを貼り付けてください。")
+                st.stop()
 
-        st.success(f"✅ {len(jobs)}件の求人を読み込みました")
+            source_key = detected_source if detected_source else "circus"
+            st.session_state.current_source = source_key
+            source_label = "circus" if source_key == "circus" else "HITO-Link"
+            st.success(f"✅ {source_label} から {len(jobs)}件の求人を読み込みました")
 
+    else:
+        # ソース選択
+        source = st.radio(
+            "求人サイト",
+            ["circus", "HITO-Link"],
+            horizontal=True,
+        )
+        source_key = "circus" if source == "circus" else "hito-link"
+        st.session_state.current_source = source_key
+
+        st.markdown("### 📁 CSVファイルをアップロード")
+        st.caption("Phase1で出力されたCSVファイル、または検索結果CSVをアップロードしてください。")
+
+        uploaded_csv = st.file_uploader(
+            "CSVファイルを選択",
+            type=["csv"],
+            key="csv_upload",
+        )
+
+        if uploaded_csv:
+            file_content = uploaded_csv.read()
+
+            with st.spinner("CSVを読み込み中..."):
+                if source_key == "circus":
+                    jobs = parse_circus_csv(file_content)
+                else:
+                    jobs = parse_hitolink_csv(file_content)
+
+            if not jobs:
+                st.error("求人データを読み取れませんでした。ファイル形式を確認してください。")
+                st.stop()
+
+            st.success(f"✅ {len(jobs)}件の求人を読み込みました")
+
+    # ここから先はjobsがある場合のみ表示
+    if jobs:
         # 既存マッチ度チェック
         has_existing_grades = any(j.get("match_grade") for j in jobs)
 

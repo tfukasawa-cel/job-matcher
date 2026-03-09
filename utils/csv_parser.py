@@ -1,9 +1,10 @@
 """
-CSV解析モジュール
-circus / HITO-Link のCSVファイルを解析して統一的なデータ構造に変換
+CSV・JSON解析モジュール
+circus / HITO-Link のCSVファイルおよびブックマークレットJSONを解析して統一的なデータ構造に変換
 """
 import csv
 import io
+import json
 import re
 
 
@@ -128,6 +129,43 @@ def _safe_get(row: list, idx: int, default: str = "") -> str:
     if idx < 0 or idx >= len(row):
         return default
     return row[idx] or default
+
+
+def parse_bookmarklet_json(json_text: str) -> tuple[list[dict], str]:
+    """
+    ブックマークレットが出力したJSONテキストを解析
+    Returns: (jobs_list, source_key)
+      jobs_list: [{"company": "...", "title": "...", ...}, ...]
+      source_key: "circus" or "hito-link"
+    """
+    try:
+        data = json.loads(json_text)
+    except json.JSONDecodeError:
+        return [], ""
+
+    source = data.get("source", "")
+    raw_jobs = data.get("jobs", [])
+
+    if not raw_jobs:
+        return [], source
+
+    jobs = []
+    for j in raw_jobs:
+        job = {
+            "company": j.get("company", ""),
+            "title": j.get("title", ""),
+            "job_type": j.get("job_type", j.get("jobType", "")),
+            "salary": j.get("salary", ""),
+            "location": j.get("location", ""),
+            "skills": j.get("skills", ""),
+            "match_grade": "",
+            "match_reason": "",
+            "page": str(j.get("page", "")),
+        }
+        if job["company"] or job["title"]:
+            jobs.append(job)
+
+    return jobs, source
 
 
 def auto_detect_source(file_content: bytes) -> str:

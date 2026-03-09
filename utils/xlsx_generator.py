@@ -165,10 +165,10 @@ def generate_csv_match_xlsx(
     ws.title = f"求人一覧_{candidate_name}"
 
     if source == "hito-link":
-        headers = ["No.", "企業名", "求人タイトル", "年収", "勤務地",
+        headers = ["No.", "ページ", "企業名", "求人タイトル", "年収", "勤務地",
                     "必須スキル", "マッチ度", "判定理由", "メモ"]
     else:
-        headers = ["No.", "企業名", "求人タイトル", "求人種別", "年収", "勤務地",
+        headers = ["No.", "ページ", "企業名", "求人タイトル", "求人種別", "年収", "勤務地",
                     "必須スキル", "マッチ度", "判定理由", "メモ"]
 
     for col_idx, header in enumerate(headers, 1):
@@ -184,6 +184,7 @@ def generate_csv_match_xlsx(
         if source == "hito-link":
             row_data = [
                 row_idx - 1,
+                job.get("page", ""),
                 job.get("company", ""),
                 job.get("title", ""),
                 job.get("salary", ""),
@@ -196,6 +197,7 @@ def generate_csv_match_xlsx(
         else:
             row_data = [
                 row_idx - 1,
+                job.get("page", ""),
                 job.get("company", ""),
                 job.get("title", ""),
                 job.get("job_type", ""),
@@ -212,17 +214,17 @@ def generate_csv_match_xlsx(
             cell.border = THIN_BORDER
             cell.alignment = Alignment(vertical="center", wrap_text=True)
 
-            # マッチ度列に色付け
-            match_col = 7 if source == "hito-link" else 8
+            # マッチ度列に色付け（ページ列追加分 +1）
+            match_col = 8 if source == "hito-link" else 9
             if col_idx == match_col and grade in GRADE_COLORS:
                 cell.fill = GRADE_COLORS[grade]
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # 列幅
+    # 列幅（ページ列追加）
     if source == "hito-link":
-        col_widths = [6, 30, 50, 16, 16, 40, 10, 50, 20]
+        col_widths = [6, 8, 30, 50, 16, 16, 40, 10, 50, 20]
     else:
-        col_widths = [6, 30, 50, 14, 16, 16, 40, 10, 50, 20]
+        col_widths = [6, 8, 30, 50, 14, 16, 16, 40, 10, 50, 20]
 
     for idx, width in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(idx)].width = width

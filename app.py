@@ -463,6 +463,7 @@ elif page == "📋 求人取込 & マッチ":
         if source_key == "circus":
             df_data = [{
                 "No.": i + 1,
+                "ページ": j.get("page", ""),
                 "企業名": j.get("company", ""),
                 "求人タイトル": j.get("title", ""),
                 "種別": j.get("job_type", ""),
@@ -474,6 +475,7 @@ elif page == "📋 求人取込 & マッチ":
         else:
             df_data = [{
                 "No.": i + 1,
+                "ページ": j.get("page", ""),
                 "企業名": j.get("company", ""),
                 "求人タイトル": j.get("title", ""),
                 "年収": j.get("salary", ""),

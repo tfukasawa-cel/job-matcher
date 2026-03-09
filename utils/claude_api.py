@@ -72,7 +72,7 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
 
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-haiku-4-5-20241022",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -94,7 +94,7 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
         except Exception as e:
             for job in batch:
                 job["match_grade"] = "○"
-                job["match_reason"] = f"APIエラー: {str(e)[:50]}"
+                job["match_reason"] = f"APIエラー: {str(e)[:150]}"
 
         results.extend(batch)
 
@@ -147,7 +147,7 @@ def score_pdf_with_claude(api_key: str, candidate_profile: str,
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -204,21 +204,21 @@ def score_pdfs_batch(api_key: str, candidate_profile: str,
 
 def estimate_cost(num_jobs_csv: int = 0, num_pdfs: int = 0) -> dict:
     """API利用コストの概算"""
-    # Claude 3.5 Sonnet pricing: $3/1M input, $15/1M output
+    # スキルマッチ: Haiku 4.5 ($1/1M input, $5/1M output)
     csv_input_tokens = num_jobs_csv * 500  # ~500 tokens per job
     csv_output_tokens = num_jobs_csv * 50
+    csv_cost = (csv_input_tokens / 1_000_000) * 1 + (csv_output_tokens / 1_000_000) * 5
+
+    # PDF精密採点: Sonnet 4.6 ($3/1M input, $15/1M output)
     pdf_input_tokens = num_pdfs * 5000  # ~5000 tokens per PDF
     pdf_output_tokens = num_pdfs * 100
+    pdf_cost = (pdf_input_tokens / 1_000_000) * 3 + (pdf_output_tokens / 1_000_000) * 15
 
-    total_input = csv_input_tokens + pdf_input_tokens
-    total_output = csv_output_tokens + pdf_output_tokens
-
-    cost_input = (total_input / 1_000_000) * 3
-    cost_output = (total_output / 1_000_000) * 15
+    total_cost = csv_cost + pdf_cost
 
     return {
-        "total_cost_usd": round(cost_input + cost_output, 3),
-        "total_cost_jpy": round((cost_input + cost_output) * 150, 0),
-        "input_tokens": total_input,
-        "output_tokens": total_output,
+        "total_cost_usd": round(total_cost, 3),
+        "total_cost_jpy": round(total_cost * 150, 0),
+        "input_tokens": csv_input_tokens + pdf_input_tokens,
+        "output_tokens": csv_output_tokens + pdf_output_tokens,
     }

@@ -378,7 +378,23 @@ elif page == "📋 求人取込 & マッチ":
             source_key = detected_source if detected_source else "circus"
             st.session_state.current_source = source_key
             source_label = "circus" if source_key == "circus" else "HITO-Link"
-            st.success(f"✅ {source_label} から {len(jobs)}件の求人を読み込みました")
+
+            # 重複除去（同じ企業名＋求人タイトルの組み合わせ）
+            before_count = len(jobs)
+            seen = set()
+            unique_jobs = []
+            for j in jobs:
+                key = (j.get("company", ""), j.get("title", ""))
+                if key not in seen:
+                    seen.add(key)
+                    unique_jobs.append(j)
+            jobs = unique_jobs
+            dup_count = before_count - len(jobs)
+
+            msg = f"✅ {source_label} から {len(jobs)}件の求人を読み込みました"
+            if dup_count > 0:
+                msg += f"（重複 {dup_count}件 を除外）"
+            st.success(msg)
 
     else:
         # ソース選択
@@ -437,8 +453,8 @@ elif page == "📋 求人取込 & マッチ":
         with col1:
             grade_filter = st.multiselect(
                 "マッチ度フィルター",
-                ["◎", "○", "△", "×", "（未判定）"],
-                default=["◎", "○", "△", "×", "（未判定）"],
+                ["◎", "○", "△", "×", "？", "（未判定）"],
+                default=["◎", "○", "△", "×", "？", "（未判定）"],
             )
         with col2:
             search_company = st.text_input("企業名検索", "")

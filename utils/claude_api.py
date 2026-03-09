@@ -72,7 +72,7 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
 
         try:
             response = client.messages.create(
-                model="claude-haiku-4-5-20241022",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -89,11 +89,11 @@ def skill_match_batch(api_key: str, candidate_profile: str, jobs: list[dict],
                         batch[idx]["match_reason"] = item.get("reason", "")
             else:
                 for job in batch:
-                    job["match_grade"] = "○"
-                    job["match_reason"] = "AI判定エラー（手動確認推奨）"
+                    job["match_grade"] = "？"
+                    job["match_reason"] = "AI応答の解析失敗（手動確認推奨）"
         except Exception as e:
             for job in batch:
-                job["match_grade"] = "○"
+                job["match_grade"] = "？"
                 job["match_reason"] = f"APIエラー: {str(e)[:150]}"
 
         results.extend(batch)

@@ -2,6 +2,8 @@
 CSV・JSON解析モジュール
 circus / HITO-Link のCSVファイルおよびブックマークレットJSONを解析して統一的なデータ構造に変換
 """
+from __future__ import annotations
+
 import csv
 import io
 import json
